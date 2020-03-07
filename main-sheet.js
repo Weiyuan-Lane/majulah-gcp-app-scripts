@@ -15,18 +15,18 @@ var MAIN_SHEET_SENT_COLUMN_NAME = 'Sent Approval Email?';
 
 var MAIN_SHEET_SENT_COLUMN_VAL = 'Sent';
 
-
-
 var QWIKLAB_EMAIL_SUBJECT = 'Test Qwiklabs Email';
 var QWIKLAB_EMAIL_HTML_BODY = '<a href="https://www.qwiklabs.com/">Visit Qwiklabs here</a>';
 
 var COURSERA_EMAIL_SUBJECT = 'Test Coursera Email';
 var COURSERA_EMAIL_HTML_BODY = '<a href="https://www.coursera.com/">Visit Coursera here</a>';
 
-/******************************* COPY ******/
-var COLLATION_SHEET_NAME = 'Unique email checklist';
-/******************************* PASTE *****/
+var REMINDER_EMAIL_SUBJECT = 'Test Reminder Email';
+var REMINDER_EMAIL_HTML_BODY = '<h1>You have not</h1> submitted your qwiklabs profile. Remember to submit it';
 
+var SENDGRID_KEY = 'REDACTED';
+var SENDGRID_EMAIL_SENDER = 'REDACTED';
+var SENDGRID_SEND_API = 'https://api.sendgrid.com/v3/mail/send';
 
 var CHECKBOX_RULE = SpreadsheetApp.newDataValidation().requireCheckbox().build();
 
@@ -36,7 +36,6 @@ function init() {
   renameInitialSheet(currentSheet);
   setupInitialSheetColumn(currentSheet);
   setupCronTrigger();
-  // setCollationSheet(currentSheet);
 }
 
 function onFormSubmit(e) {
@@ -72,18 +71,35 @@ function setupInitialSheetColumn(activeSpreadsheet) {
   mainSheet.getRange(MAIN_SHEET_REMINDER_COLUMN+'1').setValue(MAIN_SHEET_REMINDER_COLUMN_NAME);
 }
 
-/*function setCollationSheet(activeSpreadsheet) {
-  newSheet = activeSpreadsheet.insertSheet();
-  newSheet.setName(COLLATION_SHEET_NAME);
-  
-  newSheet.getRange('A1').setValue("Participants")
-  newSheet.getRange('A2').setValue("=UNIQUE(FILTER('"+ MAIN_SHEET_NAME + "'!" + MAIN_SHEET_EMAIL_COLUMN + "2:" + MAIN_SHEET_EMAIL_COLUMN +", EQ('"+ MAIN_SHEET_NAME + "'!" + MAIN_SHEET_SENT_COLUMN + "2:" + MAIN_SHEET_SENT_COLUMN + ", \"" + MAIN_SHEET_SENT_COLUMN_VAL + "\")))");
-  
-  newSheet.getRange('B1').setValue("Coursera Links")
-}*/
-
 function sendEmail(email, subject, htmlBody) {
-  GmailApp.sendEmail(email, subject, '', { htmlBody: htmlBody })
+  const headers = {
+    "Authorization" : "Bearer " + SENDGRID_KEY, 
+    "Content-Type": "application/json" 
+  }
+
+  const body = {
+    "personalizations": [{
+      "to": [{
+        "email": email,
+      }],
+      "subject": subject,
+    }],
+    "from": {
+      "email": SENDGRID_EMAIL_SENDER,
+    },
+    "content": [{
+      "type": "text/html",
+      "value": htmlBody,
+    }],
+  };
+
+  const options = {
+    'method':'post',
+    'headers':headers,
+    'payload':JSON.stringify(body)
+  };
+
+  const response = UrlFetchApp.fetch(SENDGRID_SEND_API, options); 
 }
 
 /**********************************************/
@@ -116,8 +132,8 @@ function triggerEmailToChecked() {
     for (var j = 0; j < values[i].length; j++) {
       if (values[i][j] == true) {
         var row = i + 2;
-        var email = mainSheet.getRange(MAIN_SHEET_EMAIL_COLUMN + '' + row).getValue()
-        sendEmail(email, COURSERA_EMAIL_SUBJECT, COURSERA_EMAIL_HTML_BODY)
+        var email = mainSheet.getRange(MAIN_SHEET_EMAIL_COLUMN + '' + row).getValue();
+        sendEmail(email, COURSERA_EMAIL_SUBJECT, COURSERA_EMAIL_HTML_BODY);
         mainSheet.getRange(MAIN_SHEET_SENT_COLUMN + "" + row).setValue(MAIN_SHEET_SENT_COLUMN_VAL);
       }
     }
@@ -187,7 +203,7 @@ function cronJob() {
           count += 1; 
         }
         reminderCellRange.setValue(count);
-        // Send Email CODE HERE;
+        sendEmail(email, REMINDER_EMAIL_SUBJECT, REMINDER_EMAIL_HTML_BODY);
         tsCellRange.setValue(nowTime); // Update timestamp to current time (avoid spamming the user again under the reminder delay timing lapse again)
       }
     }
