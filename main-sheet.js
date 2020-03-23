@@ -203,6 +203,8 @@ function cronJob() {
           count += 1; 
         }
         reminderCellRange.setValue(count);
+
+        var email = mainSheet.getRange(MAIN_SHEET_EMAIL_COLUMN + '' + row).getValue();
         sendEmail(email, REMINDER_EMAIL_SUBJECT, REMINDER_EMAIL_HTML_BODY);
         tsCellRange.setValue(nowTime); // Update timestamp to current time (avoid spamming the user again under the reminder delay timing lapse again)
       }
